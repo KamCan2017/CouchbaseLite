@@ -46,8 +46,8 @@ namespace CBLiteApplication
                 Manager manager = Manager.SharedInstance;
                 Database db = manager.GetDatabase(_databaseName);
 
-                var query = db.CreateAllDocumentsQuery();
-                query.AllDocsMode = AllDocsMode.AllDocs;
+                var query = db.GetView("Types").CreateQuery();
+                query.StartKey = typeof(T).Name;
                 var rows = query.Run();
                 var ids = new List<Guid>();
 
@@ -68,25 +68,29 @@ namespace CBLiteApplication
         }
 
 
-        private void LoadStoredObjectInCache()
+        private async void LoadStoredObjectInCache()
         {
-            Manager manager = Manager.SharedInstance;
-            Database db = manager.GetDatabase(_databaseName);
+            await Task.Run(() => 
+             {
+                 Manager manager = Manager.SharedInstance;
+                 Database db = manager.GetDatabase(_databaseName);
 
-            var query = db.CreateAllDocumentsQuery();
-            query.AllDocsMode = AllDocsMode.AllDocs;
-            var rows = query.Run();
+                 var query = db.GetView("Types").CreateQuery();
+                 query.StartKey = typeof(T).Name;
+                 var rows = query.Run();
 
-            foreach (var row in rows)
-            {
-                if (row.Document == null || row.Document.Deleted)
-                    return;
+                 foreach (var row in rows)
+                 {
+                     if (row.Document == null || row.Document.Deleted)
+                         return;
 
-                DateTime cacheTime = row.Document.GetProperty<DateTime>("CacheTime");
-                var obj = JsonConvert.DeserializeObject<T>(row.Document.GetProperty<string>("Model"));
-                if(obj != null)
-                  PutToCache(obj, cacheTime);
-            }
+                     DateTime cacheTime = row.Document.GetProperty<DateTime>("CacheTime");
+                     var obj = JsonConvert.DeserializeObject<T>(row.Document.GetProperty<string>("Model"));
+                     if (obj != null)
+                         PutToCache(obj, cacheTime);
+                 }
+             }
+             );           
         }
         
 
